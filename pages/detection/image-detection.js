@@ -4,10 +4,6 @@ import { SimpleGrid, Box, Text } from "@chakra-ui/react"
 import { Button, Input } from "@chakra-ui/react"
 import { NavBar } from "../home/home-page"
 import { Spinner } from "@chakra-ui/react"
-import { ALPHABET } from "./alphabet"
-import { ChakraProvider, StylesProvider, useStyles } from "@chakra-ui/react"
-
-
 import {
   Table,
   Thead,
@@ -22,17 +18,23 @@ import {
 
 import "@tensorflow/tfjs-backend-webgl"
 import "@tensorflow/tfjs-backend-cpu"
+import axios from "axios"
+
 const mobilenet = require("@tensorflow-models/mobilenet")
 const cocossd = require("@tensorflow-models/coco-ssd")
 
+
 export default function ImageDetection() {
-  const [isModelLoading, setIsModelLoading] = useState(false)
   const [model, setModel] = useState(null)
   const [modelCoco, setModelCoco] = useState(null)
   const [imageURL, setImageURL] = useState(null)
   const [results, setResults] = useState([])
   const [resultsCoco, setResultsCoco] = useState([])
   const [history, setHistory] = useState([])
+  const [alphabet, setAlphabet] = useState([])
+  const [ready, isReady] = useState(false)
+
+  const [isModelLoading, setIsModelLoading] = useState(false)
 
   const imageRef = useRef()
   const textInputRef = useRef()
@@ -43,6 +45,11 @@ export default function ImageDetection() {
     try {
       const model = await mobilenet.load()
       const net = await cocossd.load()
+
+      if (model && net) {
+        setIsModelLoading(false)
+      }
+
       setModel(model)
       setModelCoco(net)
       setIsModelLoading(false)
@@ -51,6 +58,26 @@ export default function ImageDetection() {
       setIsModelLoading(false)
     }
   }
+
+  useEffect(() => {
+    isReady(false)
+    try {
+      const getData = async () => {
+        const response = await axios.get("http://localhost:3001/translations")
+        if (response.data) {
+          console.log('response', response)
+          setAlphabet(response.data)
+          isReady(true)
+        }
+      }
+      if (!ready) {
+        getData()
+      }
+    }
+    catch (error) {
+      console.log('error', error)
+    }
+  }, [])
 
   const uploadImage = e => {
     const { files } = e.target
@@ -152,29 +179,27 @@ export default function ImageDetection() {
                   </Tr>
                 </Thead>
                 <Tbody>
-                  <Tr>
-                    {resultsCoco.map(item => {
-                      const filtered = ALPHABET.find(
-                        alpha_item => alpha_item.english === item.class
-                      )
+                  {resultsCoco.map(item => {
+                    const filtered = alphabet?.find(
+                      alpha_item => alpha_item.english === item.class
+                    )
 
-                      if (filtered) {
-                        return (
-                          <>
-                            <Td> {filtered.english} </Td>
-                            <Td> {filtered.spanish} </Td>
-                            <Td> {filtered.native} </Td>
-                          </>
-                        )
-                      } else {
-                        <>
-                          <Td> Not found </Td>
-                          <Td> No encontrada </Td>
-                          <Td>  </Td>
-                        </>
-                      }
-                    })}
-                  </Tr>
+                    if (filtered) {
+                      return (
+                        <Tr>
+                          <Td> {filtered.english} </Td>
+                          <Td> {filtered.spanish} </Td>
+                          <Td> {filtered.native} </Td>
+                        </Tr>
+                      )
+                    } else {
+                      <Tr>
+                        <Td> Not found </Td>
+                        <Td> No encontrada </Td>
+                        <Td>  </Td>
+                      </Tr>
+                    }
+                  })}
                 </Tbody>
               </Table>
             </TableContainer>

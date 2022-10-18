@@ -7,8 +7,8 @@ import "@tensorflow/tfjs-backend-cpu"
 import Webcam from "react-webcam"
 import { drawRect } from "./utilities"
 import { NavBar } from "../home/home-page"
-import { ALPHABET } from "./alphabet"
 import { Spinner } from "@chakra-ui/react"
+import axios from "axios"
 
 import {
   Table,
@@ -24,6 +24,7 @@ import {
 
 import { Stat, StatNumber, SimpleGrid, Box, Text } from "@chakra-ui/react"
 
+
 const cocossd = require("@tensorflow-models/coco-ssd")
 
 export default function CameraDetection() {
@@ -33,19 +34,48 @@ export default function CameraDetection() {
   const [detection, setDetection] = useState([])
   const [isModelLoading, setIsModelLoading] = useState(false)
 
+  const [alphabet, setAlphabet] = useState([])
+  const [ready, isReady] = useState(false)
+
   // Main function
   const runCoco = async () => {
-    const net = await cocossd.load()
+    setIsModelLoading(false)
+    try {
+      const net = await cocossd.load()
 
-    if (net) {
-      setIsModelLoading(false)
+      if (net) {
+        setIsModelLoading(false)
+      }
+      console.log("Handpose model loaded.")
+      //  Loop and detect hands
+      setInterval(() => {
+        detect(net)
+      }, 10)
+    } catch (error) {
+      console.log('error', error)
     }
-    console.log("Handpose model loaded.")
-    //  Loop and detect hands
-    setInterval(() => {
-      detect(net)
-    }, 10)
   }
+
+  useEffect(() => {
+    isReady(false)
+    try {
+      const getData = async () => {
+        const response = await axios.get("http://localhost:3001/translations")
+        if (response.data) {
+          console.log('response', response)
+          setAlphabet(response.data)
+          isReady(true)
+        }
+      }
+      if (!ready) {
+        getData()
+      }
+    }
+    catch (error) {
+      console.log('error', error)
+    }
+  }, [])
+
 
   const detect = async net => {
     // Check data is available
@@ -145,33 +175,35 @@ export default function CameraDetection() {
                 </Tr>
               </Thead>
               <Tbody>
-                <Tr>
-                  {detection.map(item => {
-                    const filtered = ALPHABET.find(
-                      alpha_item => alpha_item.english === item.class
-                    )
 
-                    if (filtered) {
-                      return (
-                        <>
-                          <Td> {filtered.english} </Td>
-                          <Td> {filtered.spanish} </Td>
-                          <Td> {filtered.native} </Td>
-                        </>
-                      )
-                    } else {
-                      <>
-                        <Td> Not found </Td>
-                        <Td> No encontrada </Td>
-                        <Td>  </Td>
-                      </>
-                    }
-                  })}
-                </Tr>
+                {detection.map(item => {
+                  const filtered = alphabet?.find(
+                    alpha_item => alpha_item.english === item.class
+                  )
+
+                  if (filtered) {
+                    return (
+                      <Tr>
+                        <Td> {filtered.english} </Td>
+                        <Td> {filtered.spanish} </Td>
+                        <Td> {filtered.native} </Td>
+                      </Tr>
+                    )
+                  } else {
+                    <Tr>
+                      <Td> Not found </Td>
+                      <Td> No encontrada </Td>
+                      <Td>  </Td>
+                    </Tr>
+                  }
+                })}
+
+
+
               </Tbody>
             </Table>
           </TableContainer>
-          
+
         </div>
       </div>
     </>

@@ -5,7 +5,8 @@ import Webcam from "react-webcam"
 import { drawHand } from "../../components/handposeutil"
 import * as fp from "fingerpose"
 import Handsigns from "../../components/handsigns"
-import { ALPHABET } from "./alphabet"
+import { Spinner } from "@chakra-ui/react"
+import axios from "axios"
 import {
   Text,
   Heading,
@@ -49,14 +50,17 @@ export default function HandDetection() {
   const forceUpdate = React.useCallback(() => updateState({}), [])
 
   const [sign, setSign] = useState(null)
-  const [ready, setReady] = useState(false)
   // const [reachAcceptanceCryteria, setReachAcceptanceCryteria] = useState(0)
   const [displayWord, setDisplayWord] = useState("")
   const [result, setResult] = useState({})
   const [readyToUse, setReadyToUse] = useState(false)
   const ref = useRef(0)
+  const [alphabet, setAlphabet] = useState([])
+  const [ready, isReady] = useState(false)
 
   const [counter, setCounter] = useState(0)
+
+  const [isModelLoading, setIsModelLoading] = useState(false)
 
   let signList = []
   let currentSign = 0
@@ -66,7 +70,7 @@ export default function HandDetection() {
   useEffect(() => {
     if (displayWord.length != 0) {
       console.log("displayWord", displayWord)
-      const filtered = ALPHABET.find(
+      const filtered = alphabet?.find(
         alpha_item =>
           alpha_item.english.toUpperCase() === displayWord.toUpperCase() ||
           alpha_item.spanish.toUpperCase() === displayWord.toUpperCase()
@@ -80,18 +84,49 @@ export default function HandDetection() {
     }
   }, [displayWord])
 
+  useEffect(() => {
+    isReady(false)
+    try {
+      const getData = async () => {
+        const response = await axios.get("http://localhost:3001/translations")
+        if (response.data) {
+          console.log('response', response)
+          setAlphabet(response.data)
+          isReady(true)
+        }
+      }
+      if (!ready) {
+        getData()
+      }
+    }
+    catch (error) {
+      console.log('error', error)
+    }
+  }, [])
+
+
 
   async function runHandpose() {
-    const net = await handpose.load()
-    _signList()
+    setIsModelLoading(true)
+    try {
 
-    setInterval(() => {
-      detect(net)
-      setCounter(prevCounter => prevCounter + 1)
-    }, 150)
+      const net = await handpose.load()
+
+      if (net) {
+        setIsModelLoading(false)
+      }
+      _signList()
+
+      setInterval(() => {
+        detect(net)
+        setCounter(prevCounter => prevCounter + 1)
+      }, 150)
+
+    } catch (error) {
+
+    }
+
   }
-
-  useEffect(() => { })
 
   function _signList() {
     signList = generateSigns()
@@ -233,6 +268,19 @@ export default function HandDetection() {
   const reset = () => {
     setCounter(0)
     setDisplayWord('')
+  }
+
+  if (isModelLoading) {
+    return (
+      <Spinner
+        thickness="4px"
+        speed="0.65s"
+        emptyColor="gray.200"
+        color="blue.500"
+        size="xl"
+        className="loader"
+      />
+    )
   }
 
   return (
