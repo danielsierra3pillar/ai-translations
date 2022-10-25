@@ -4,6 +4,7 @@ import { SimpleGrid, Box, Text } from "@chakra-ui/react"
 import { Button, Input } from "@chakra-ui/react"
 import { NavBar } from "../home/home-page"
 import { Spinner } from "@chakra-ui/react"
+import { Select } from "@chakra-ui/react"
 import {
   Table,
   Thead,
@@ -14,7 +15,7 @@ import {
   Td,
   TableCaption,
   TableContainer,
-} from '@chakra-ui/react'
+} from "@chakra-ui/react"
 
 import "@tensorflow/tfjs-backend-webgl"
 import "@tensorflow/tfjs-backend-cpu"
@@ -22,7 +23,6 @@ import axios from "axios"
 
 const mobilenet = require("@tensorflow-models/mobilenet")
 const cocossd = require("@tensorflow-models/coco-ssd")
-
 
 export default function ImageDetection() {
   const [model, setModel] = useState(null)
@@ -39,6 +39,10 @@ export default function ImageDetection() {
   const imageRef = useRef()
   const textInputRef = useRef()
   const fileInputRef = useRef()
+
+  const [selectedNativeLanguage, setSelectedNativeLanguage] = useState("quiche")
+  const [list, setList] = useState([])
+  const [alphabetVirgin, setAlphabetVirgin] = useState([])
 
   const loadModel = async () => {
     setIsModelLoading(true)
@@ -63,21 +67,39 @@ export default function ImageDetection() {
     isReady(false)
     try {
       const getData = async () => {
+        // agregar un param?
         const response = await axios.get("http://localhost:3001/translations")
-        if (response.data) {
-          console.log('response', response)
+        const responseList = await axios.get(
+          "http://localhost:3001/translations/language"
+        )
+
+        if (response.data && responseList.data) {
+          setList(responseList.data)
           setAlphabet(response.data)
-          isReady(true)
+          setAlphabetVirgin(response.data)
         }
       }
       if (!ready) {
         getData()
       }
-    }
-    catch (error) {
-      console.log('error', error)
+    } catch (error) {
+      console.log("error", error)
     }
   }, [])
+
+  useEffect(() => {
+    if (selectedNativeLanguage.length) {
+      const filtered = alphabetVirgin.filter(
+        item => item.lenguage === selectedNativeLanguage
+      )
+      console.log("what", {
+        filtered,
+        selectedNativeLanguage,
+        alphabet,
+      })
+      setAlphabet(filtered)
+    }
+  }, [selectedNativeLanguage])
 
   const uploadImage = e => {
     const { files } = e.target
@@ -131,6 +153,27 @@ export default function ImageDetection() {
     )
   }
 
+  const selectedItemJSX = () => {
+    if (list.length > 0) {
+      console.log("list", list)
+      return (
+        <div>
+          <Select
+            placeholder="Select option"
+            onChange={event => {
+              console.log("local?", event.target.value)
+              setSelectedNativeLanguage(event.target.value)
+            }}
+          >
+            {list.map(item => {
+              return <option value={item.lenguage}>{item.lenguage}</option>
+            })}
+          </Select>
+        </div>
+      )
+    }
+  }
+
   return (
     <>
       {NavBar()}
@@ -168,9 +211,9 @@ export default function ImageDetection() {
                 />
               )}
             </div>
-
+            {selectedItemJSX()}
             <TableContainer>
-              <Table variant='simple'>
+              <Table variant="simple">
                 <Thead>
                   <Tr>
                     <Th>Ingles</Th>
@@ -193,17 +236,16 @@ export default function ImageDetection() {
                         </Tr>
                       )
                     } else {
-                      <Tr>
+                      ;<Tr>
                         <Td> Not found </Td>
                         <Td> No encontrada </Td>
-                        <Td>  </Td>
+                        <Td> </Td>
                       </Tr>
                     }
                   })}
                 </Tbody>
               </Table>
             </TableContainer>
-
           </div>
           {imageURL && (
             <Button onClick={identify} colorScheme="orange">

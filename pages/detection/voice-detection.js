@@ -17,7 +17,9 @@ import {
   Td,
   TableCaption,
   TableContainer,
-} from '@chakra-ui/react'
+} from "@chakra-ui/react"
+import { Select } from "@chakra-ui/react"
+
 export default function VoiceDetection() {
   const [value, setValue] = useState("")
   const [translation, setTranslation] = useState({})
@@ -31,36 +33,57 @@ export default function VoiceDetection() {
   const [alphabet, setAlphabet] = useState([])
   const [ready, isReady] = useState(false)
 
+  const [selectedNativeLanguage, setSelectedNativeLanguage] = useState("quiche")
+  const [list, setList] = useState([])
+  const [alphabetVirgin, setAlphabetVirgin] = useState([])
 
   useEffect(() => {
     isReady(false)
     try {
       const getData = async () => {
+        // agregar un param?
         const response = await axios.get("http://localhost:3001/translations")
-        if (response.data) {
-          console.log('response', response)
+        const responseList = await axios.get(
+          "http://localhost:3001/translations/language"
+        )
+
+        if (response.data && responseList.data) {
+          setList(responseList.data)
           setAlphabet(response.data)
-          isReady(true)
+          setAlphabetVirgin(response.data)
         }
       }
       if (!ready) {
         getData()
       }
-    }
-    catch (error) {
-      console.log('error', error)
+    } catch (error) {
+      console.log("error", error)
     }
   }, [])
 
   useEffect(() => {
+    if (selectedNativeLanguage.length) {
+      const filtered = alphabetVirgin.filter(
+        item => item.lenguage === selectedNativeLanguage
+      )
+      console.log("what", {
+        filtered,
+        selectedNativeLanguage,
+        alphabet,
+      })
+      setAlphabet(filtered)
+    }
+  }, [selectedNativeLanguage])
+
+  useEffect(() => {
     setIsModelLoading(true)
     const timer = setTimeout(() => {
-      console.log('Timeout called!');
+      console.log("Timeout called!")
       setIsModelLoading(false)
-    }, 10000);
+    }, 10000)
     console.log(value)
-    return () => clearTimeout(timer);
-  }, []);
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     if (value.length) {
@@ -89,6 +112,27 @@ export default function VoiceDetection() {
     )
   }
 
+  const selectedItemJSX = () => {
+    if (list.length > 0) {
+      console.log("list", list)
+      return (
+        <div>
+          <Select
+            placeholder="Select option"
+            onChange={event => {
+              console.log("local?", event.target.value)
+              setSelectedNativeLanguage(event.target.value)
+            }}
+          >
+            {list.map(item => {
+              return <option value={item.lenguage}>{item.lenguage}</option>
+            })}
+          </Select>
+        </div>
+      )
+    }
+  }
+
   return (
     <>
       {NavBar()}
@@ -100,12 +144,10 @@ export default function VoiceDetection() {
 
         {listening && <div>Listo para escuchar</div>}
       </div>
-
+      {selectedItemJSX()}
       {
-
-
         <TableContainer>
-          <Table variant='simple'>
+          <Table variant="simple">
             <Thead>
               <Tr>
                 <Th>Ingles</Th>
@@ -118,13 +160,10 @@ export default function VoiceDetection() {
                 <Td> {translation.english} </Td>
                 <Td> {translation.spanish} </Td>
                 <Td> {translation.native} </Td>
-
               </Tr>
             </Tbody>
           </Table>
         </TableContainer>
-
-
       }
     </>
   )

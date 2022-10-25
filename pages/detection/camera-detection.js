@@ -9,6 +9,7 @@ import { drawRect } from "./utilities"
 import { NavBar } from "../home/home-page"
 import { Spinner } from "@chakra-ui/react"
 import axios from "axios"
+import { Select } from "@chakra-ui/react"
 
 import {
   Table,
@@ -20,10 +21,9 @@ import {
   Td,
   TableCaption,
   TableContainer,
-} from '@chakra-ui/react'
+} from "@chakra-ui/react"
 
 import { Stat, StatNumber, SimpleGrid, Box, Text } from "@chakra-ui/react"
-
 
 const cocossd = require("@tensorflow-models/coco-ssd")
 
@@ -36,6 +36,10 @@ export default function CameraDetection() {
 
   const [alphabet, setAlphabet] = useState([])
   const [ready, isReady] = useState(false)
+
+  const [selectedNativeLanguage, setSelectedNativeLanguage] = useState("quiche")
+  const [list, setList] = useState([])
+  const [alphabetVirgin, setAlphabetVirgin] = useState([])
 
   // Main function
   const runCoco = async () => {
@@ -52,7 +56,7 @@ export default function CameraDetection() {
         detect(net)
       }, 10)
     } catch (error) {
-      console.log('error', error)
+      console.log("error", error)
     }
   }
 
@@ -60,22 +64,41 @@ export default function CameraDetection() {
     isReady(false)
     try {
       const getData = async () => {
+        // agregar un param?
         const response = await axios.get("http://localhost:3001/translations")
-        if (response.data) {
-          console.log('response', response)
+        const responseList = await axios.get(
+          "http://localhost:3001/translations/language"
+        )
+
+        if (response.data && responseList.data) {
+          setList(responseList.data)
           setAlphabet(response.data)
-          isReady(true)
+          setAlphabetVirgin(response.data)
         }
       }
       if (!ready) {
         getData()
       }
-    }
-    catch (error) {
-      console.log('error', error)
+    } catch (error) {
+      console.log("error", error)
+    } finally {
+      isReady(true)
     }
   }, [])
 
+  useEffect(() => {
+    if (selectedNativeLanguage.length) {
+      const filtered = alphabetVirgin.filter(
+        item => item.lenguage === selectedNativeLanguage
+      )
+      console.log("what", {
+        filtered,
+        selectedNativeLanguage,
+        alphabet,
+      })
+      setAlphabet(filtered)
+    }
+  }, [selectedNativeLanguage])
 
   const detect = async net => {
     // Check data is available
@@ -127,6 +150,28 @@ export default function CameraDetection() {
     )
   }
 
+  const selectedItemJSX = () => {
+    if (list.length > 0) {
+      console.log("list", list)
+      return (
+        <div>
+          <Select
+            placeholder="Select option"
+            onChange={event => {
+              console.log("local?", event.target.value)
+              setSelectedNativeLanguage(event.target.value)
+            }}
+          >
+            {list.map(item => {
+              console.log("awhdas")
+              return <option value={item.lenguage}>{item.lenguage}</option>
+            })}
+          </Select>
+        </div>
+      )
+    }
+  }
+
   return (
     <>
       {NavBar()}
@@ -164,9 +209,9 @@ export default function CameraDetection() {
           />
         </div>
         <div className="camera-results">
-
+          {selectedItemJSX()}
           <TableContainer>
-            <Table variant='simple'>
+            <Table variant="simple">
               <Thead>
                 <Tr>
                   <Th>Ingles</Th>
@@ -175,7 +220,6 @@ export default function CameraDetection() {
                 </Tr>
               </Thead>
               <Tbody>
-
                 {detection.map(item => {
                   const filtered = alphabet?.find(
                     alpha_item => alpha_item.english === item.class
@@ -190,20 +234,16 @@ export default function CameraDetection() {
                       </Tr>
                     )
                   } else {
-                    <Tr>
+                    ;<Tr>
                       <Td> Not found </Td>
                       <Td> No encontrada </Td>
-                      <Td>  </Td>
+                      <Td> </Td>
                     </Tr>
                   }
                 })}
-
-
-
               </Tbody>
             </Table>
           </TableContainer>
-
         </div>
       </div>
     </>

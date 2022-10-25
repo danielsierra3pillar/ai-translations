@@ -7,6 +7,7 @@ import * as fp from "fingerpose"
 import Handsigns from "../../components/handsigns"
 import { Spinner } from "@chakra-ui/react"
 import axios from "axios"
+import { Select } from "@chakra-ui/react"
 import {
   Text,
   Heading,
@@ -62,9 +63,12 @@ export default function HandDetection() {
 
   const [isModelLoading, setIsModelLoading] = useState(false)
 
+  const [selectedNativeLanguage, setSelectedNativeLanguage] = useState("quiche")
+  const [list, setList] = useState([])
+  const [alphabetVirgin, setAlphabetVirgin] = useState([])
+
   let signList = []
   let currentSign = 0
-
   let gamestate = "started"
 
   useEffect(() => {
@@ -88,28 +92,43 @@ export default function HandDetection() {
     isReady(false)
     try {
       const getData = async () => {
+        // agregar un param?
         const response = await axios.get("http://localhost:3001/translations")
-        if (response.data) {
-          console.log('response', response)
+        const responseList = await axios.get(
+          "http://localhost:3001/translations/language"
+        )
+
+        if (response.data && responseList.data) {
+          setList(responseList.data)
           setAlphabet(response.data)
-          isReady(true)
+          setAlphabetVirgin(response.data)
         }
       }
       if (!ready) {
         getData()
       }
-    }
-    catch (error) {
-      console.log('error', error)
+    } catch (error) {
+      console.log("error", error)
     }
   }, [])
 
-
+  useEffect(() => {
+    if (selectedNativeLanguage.length) {
+      const filtered = alphabetVirgin.filter(
+        item => item.lenguage === selectedNativeLanguage
+      )
+      console.log("what", {
+        filtered,
+        selectedNativeLanguage,
+        alphabet,
+      })
+      setAlphabet(filtered)
+    }
+  }, [selectedNativeLanguage])
 
   async function runHandpose() {
     setIsModelLoading(true)
     try {
-
       const net = await handpose.load()
 
       if (net) {
@@ -121,11 +140,7 @@ export default function HandDetection() {
         detect(net)
         setCounter(prevCounter => prevCounter + 1)
       }, 150)
-
-    } catch (error) {
-
-    }
-
+    } catch (error) {}
   }
 
   function _signList() {
@@ -145,7 +160,7 @@ export default function HandDetection() {
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
-        ;[a[i], a[j]] = [a[j], a[i]]
+      ;[a[i], a[j]] = [a[j], a[i]]
     }
     return a
   }
@@ -221,9 +236,7 @@ export default function HandDetection() {
             Math.max.apply(undefined, confidence)
           )
 
-          if (
-            gamestate === "started"
-          ) {
+          if (gamestate === "started") {
             _signList()
             gamestate = "played"
           } else if (gamestate === "played") {
@@ -264,10 +277,9 @@ export default function HandDetection() {
     runHandpose()
   }, [])
 
-
   const reset = () => {
     setCounter(0)
-    setDisplayWord('')
+    setDisplayWord("")
   }
 
   if (isModelLoading) {
@@ -281,6 +293,27 @@ export default function HandDetection() {
         className="loader"
       />
     )
+  }
+
+  const selectedItemJSX = () => {
+    if (list.length > 0) {
+      console.log("list", list)
+      return (
+        <div>
+          <Select
+            placeholder="Select option"
+            onChange={event => {
+              console.log("local?", event.target.value)
+              setSelectedNativeLanguage(event.target.value)
+            }}
+          >
+            {list.map(item => {
+              return <option value={item.lenguage}>{item.lenguage}</option>
+            })}
+          </Select>
+        </div>
+      )
+    }
   }
 
   return (
@@ -340,9 +373,9 @@ export default function HandDetection() {
                   bottom: 100,
                 }}
               >
-
+                {selectedItemJSX()}
                 <TableContainer>
-                  <Table variant='simple'>
+                  <Table variant="simple">
                     <Thead>
                       <Tr>
                         <Th>Ingles</Th>
@@ -355,7 +388,6 @@ export default function HandDetection() {
                         <Td> {result?.english} </Td>
                         <Td> {result?.spanish} </Td>
                         <Td> {result?.native} </Td>
-
                       </Tr>
                     </Tbody>
 
@@ -369,7 +401,8 @@ export default function HandDetection() {
                       </Tr>
 
                       <Tr>
-                        <Th>Letra detectada
+                        <Th>
+                          Letra detectada
                           <br />
                           <img
                             alt="signImage"
@@ -389,24 +422,20 @@ export default function HandDetection() {
                         </Th>
                       </Tr>
 
-
                       <Tr>
-                        <Button style={{
-                          marginLeft: "25px",
-                        }} onClick={reset} colorScheme="orange">
+                        <Button
+                          style={{
+                            marginLeft: "25px",
+                          }}
+                          onClick={reset}
+                          colorScheme="orange"
+                        >
                           Reset
                         </Button>
                       </Tr>
-
-
-
-
                     </Tfoot>
-
                   </Table>
                 </TableContainer>
-
-
               </div>
             ) : (
               " "

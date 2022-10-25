@@ -18,6 +18,9 @@ import {
   Text,
   Container,
 } from "@chakra-ui/react"
+import { Select } from "@chakra-ui/react"
+import React, { useRef, useState, useEffect } from "react"
+import axios from "axios"
 
 const Links = [
   "Inicio",
@@ -25,9 +28,12 @@ const Links = [
   "Imagenes",
   "Sign Lenguage",
   "Voice detection",
+  "Select Lenguage",
 ]
 
-const NavLink = ({ children }) => {
+const NavLink = ({ children, data }) => {
+  console.log(children)
+  console.log(data)
   if (children === "Camara") {
     return (
       <Link
